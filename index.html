@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Multitrack Player Avansat</title>
+<title>Multitrack Player Corect</title>
 <script src="https://unpkg.com/wavesurfer.js@6"></script>
 
 <style>
@@ -12,17 +12,14 @@ body{
   margin:auto;
   padding:40px;
 }
-
 .track{
   margin-bottom:30px;
   height:80px;       /* container fix */
-  overflow:hidden;   /* ascunde waveform-ul care depășește */
+  overflow:hidden;   /* ascunde overflow */
 }
-
 .wave{
-  height:120px;      /* waveform mai mare */
+  height:120px;      /* waveform mare */
 }
-
 button{
   margin-right:10px;
   margin-bottom:5px;
@@ -64,21 +61,24 @@ tracks.forEach((track,i)=>{
 
   document.getElementById("tracks").appendChild(container);
 
-  // culoare waveform în funcție de categorie
-  const waveColor = (track.category === "click") ? "#FF5555" : "#55AAFF";
+  // culoare per categorie
+  const waveColor = (track.category==="click") ? "#FF5555" : "#55AAFF";
 
-  // creare WaveSurfer
   const ws = WaveSurfer.create({
-    container: "#wave"+i,
-    waveColor: waveColor,
-    progressColor: "#000",
+    container:"#wave"+i,
+    waveColor:"#999",       // culoarea inițială temporară
+    progressColor:"#000",
     height:120,
     responsive:true
   });
 
+  // Încarcă fișierul și setează culoarea reală la ready
   ws.load(track.file);
+  ws.on("ready", ()=>{
+    ws.setWaveColor(waveColor);
+  });
 
-  players.push(ws); // aici adăugăm doar instanța WaveSurfer
+  players.push(ws);
 });
 
 // Play / Pause
@@ -88,18 +88,14 @@ function pauseAll(){ players.forEach(p=>p.pause()); }
 // Mute
 function mute(i){ players[i].setVolume(0); }
 
-// Toggle Solo corect
+// Toggle Solo
 function toggleSolo(i){
-  if(soloActive === i){
-    // deja solo, revenim la normal
+  if(soloActive===i){
     players.forEach(p=>p.setVolume(1));
-    soloActive = null;
+    soloActive=null;
   } else {
-    // setam solo
-    players.forEach((p,index)=>{
-      p.setVolume(index===i ? 1 : 0);
-    });
-    soloActive = i;
+    players.forEach((p,index)=>p.setVolume(index===i?1:0));
+    soloActive=i;
   }
 }
 </script>
