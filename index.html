@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html>
-
 <head>
 <meta charset="UTF-8">
 <title>Multitrack Player Avansat</title>
@@ -16,12 +15,12 @@ body{
 
 .track{
   margin-bottom:30px;
-  height:80px;
-  overflow:hidden; /* container fix */
+  height:80px;       /* container fix */
+  overflow:hidden;   /* ascunde waveform-ul care depășește */
 }
 
 .wave{
-  height:120px; /* waveform mai mare */
+  height:120px;      /* waveform mai mare */
 }
 
 button{
@@ -32,7 +31,6 @@ button{
 </head>
 
 <body>
-
 <h2>Multitrack Player</h2>
 
 <button onclick="playAll()">Play</button>
@@ -48,58 +46,60 @@ const tracks = [
   { names:["Cues"], file:"cues.mp3", category:"click" },
   { names:["Guitar","Eg1","Eg2","Acoustic","Electric","Ag1","Ag2"], file:"guitar.mp3", category:"instrument" },
   { names:["AG2"], file:"ag2.mp3", category:"instrument" }
-]
+];
 
-let players = []
-let soloActive = null
+let players = [];
+let soloActive = null;
 
 tracks.forEach((track,i)=>{
-  const container=document.createElement("div")
-  container.className="track"
+  const container = document.createElement("div");
+  container.className = "track";
 
-  container.innerHTML=`
-  <h4>${track.names[0]}</h4>
-  <button onclick="toggleSolo(${i})">Solo</button>
-  <button onclick="mute(${i})">Mute</button>
-  <div id="wave${i}" class="wave"></div>
-  `
+  container.innerHTML = `
+    <h4>${track.names[0]}</h4>
+    <button onclick="toggleSolo(${i})">Solo</button>
+    <button onclick="mute(${i})">Mute</button>
+    <div id="wave${i}" class="wave"></div>
+  `;
 
-  document.getElementById("tracks").appendChild(container)
+  document.getElementById("tracks").appendChild(container);
 
-  // culoare în funcție de categorie
-  let color = (track.category === "click") ? "#FF5555" : "#55AAFF"
+  // culoare waveform în funcție de categorie
+  const waveColor = (track.category === "click") ? "#FF5555" : "#55AAFF";
 
+  // creare WaveSurfer
   const ws = WaveSurfer.create({
-    container:"#wave"+i,
-    waveColor: color,
-    progressColor:"#000",
+    container: "#wave"+i,
+    waveColor: waveColor,
+    progressColor: "#000",
     height:120,
     responsive:true
-  })
+  });
 
-  ws.load(track.file)
-  players.push({ ws: ws, track: track })
-})
+  ws.load(track.file);
+
+  players.push(ws); // aici adăugăm doar instanța WaveSurfer
+});
 
 // Play / Pause
-function playAll(){ players.forEach(p=>p.ws.play()) }
-function pauseAll(){ players.forEach(p=>p.ws.pause()) }
+function playAll(){ players.forEach(p=>p.play()); }
+function pauseAll(){ players.forEach(p=>p.pause()); }
 
 // Mute
-function mute(i){ players[i].ws.setVolume(0) }
+function mute(i){ players[i].setVolume(0); }
 
 // Toggle Solo corect
 function toggleSolo(i){
   if(soloActive === i){
     // deja solo, revenim la normal
-    players.forEach(p=>p.ws.setVolume(1))
-    soloActive = null
+    players.forEach(p=>p.setVolume(1));
+    soloActive = null;
   } else {
     // setam solo
     players.forEach((p,index)=>{
-      p.ws.setVolume(index===i ? 1 : 0)
-    })
-    soloActive = i
+      p.setVolume(index===i ? 1 : 0);
+    });
+    soloActive = i;
   }
 }
 </script>
