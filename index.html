@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Multitrack Player</title>
+
+<script src="https://unpkg.com/wavesurfer.js"></script>
+
+<style>
+
+body{
+font-family: Arial;
+max-width:700px;
+margin:auto;
+padding:40px;
+}
+
+.track{
+margin-bottom:30px;
+}
+
+button{
+margin-right:10px;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h2>Multitrack Player</h2>
+
+<button onclick="playAll()">Play</button>
+<button onclick="pauseAll()">Pause</button>
+
+<div id="tracks"></div>
+
+<script>
+
+const tracks = [
+
+{ name:"Drums", file:"drums.mp3" },
+{ name:"Bass", file:"bass.mp3" },
+{ name:"Guitar", file:"guitar.mp3" }
+
+]
+
+let players = []
+
+tracks.forEach((track,i)=>{
+
+const div=document.createElement("div")
+div.className="track"
+
+div.innerHTML=`
+<h4>${track.name}</h4>
+<button onclick="solo(${i})">Solo</button>
+<button onclick="mute(${i})">Mute</button>
+<div id="wave${i}"></div>
+`
+
+document.getElementById("tracks").appendChild(div)
+
+const ws=WaveSurfer.create({
+
+container:`#wave${i}`,
+waveColor:"gray",
+progressColor:"black",
+height:60
+
+})
+
+ws.load(track.file)
+
+players.push(ws)
+
+})
+
+function playAll(){
+players.forEach(p=>p.play())
+}
+
+function pauseAll(){
+players.forEach(p=>p.pause())
+}
+
+function mute(i){
+players[i].setVolume(0)
+}
+
+function solo(i){
+
+players.forEach((p,index)=>{
+
+if(index===i){
+p.setVolume(1)
+}else{
+p.setVolume(0)
+}
+
+})
+
+}
+
+</script>
+
+</body>
+</html>
