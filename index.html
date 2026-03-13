@@ -2,36 +2,33 @@
 <html>
 
 <head>
-
 <meta charset="UTF-8">
-<title>Multitrack Player</title>
-
+<title>Multitrack Player Avansat</title>
 <script src="https://unpkg.com/wavesurfer.js@6"></script>
 
 <style>
-
 body{
-font-family: Arial;
-max-width:900px;
-margin:auto;
-padding:40px;
+  font-family: Arial;
+  max-width:900px;
+  margin:auto;
+  padding:40px;
 }
 
 .track{
-margin-bottom:30px;
+  margin-bottom:30px;
+  height:80px;
+  overflow:hidden; /* container fix */
 }
 
 .wave{
-border:1px solid #ddd;
+  height:120px; /* waveform mai mare */
 }
 
 button{
-margin-right:10px;
-margin-bottom:5px;
+  margin-right:10px;
+  margin-bottom:5px;
 }
-
 </style>
-
 </head>
 
 <body>
@@ -44,87 +41,68 @@ margin-bottom:5px;
 <div id="tracks"></div>
 
 <script>
-
+// Lista track-urilor
 const tracks = [
-
-{ name:"Drums", file:"drums.mp3" },
-{ name:"Click", file:"Click.mp3" },
-{ name:"Cues", file:"Cues.mp3" },
-{ name:"Guitar", file:"guitar.mp3" },
-{ name:"AG2", file:"Ag2.mp3" }
-
+  { names:["Drums"], file:"drums.mp3", category:"instrument" },
+  { names:["Click"], file:"click.mp3", category:"click" },
+  { names:["Cues"], file:"cues.mp3", category:"click" },
+  { names:["Guitar","Eg1","Eg2","Acoustic","Electric","Ag1","Ag2"], file:"guitar.mp3", category:"instrument" },
+  { names:["AG2"], file:"ag2.mp3", category:"instrument" }
 ]
 
 let players = []
+let soloActive = null
 
 tracks.forEach((track,i)=>{
+  const container=document.createElement("div")
+  container.className="track"
 
-const container=document.createElement("div")
-container.className="track"
+  container.innerHTML=`
+  <h4>${track.names[0]}</h4>
+  <button onclick="toggleSolo(${i})">Solo</button>
+  <button onclick="mute(${i})">Mute</button>
+  <div id="wave${i}" class="wave"></div>
+  `
 
-container.innerHTML=`
-<h4>${track.name}</h4>
-<button onclick="solo(${i})">Solo</button>
-<button onclick="mute(${i})">Mute</button>
-<div id="wave${i}" class="wave"></div>
-`
+  document.getElementById("tracks").appendChild(container)
 
-document.getElementById("tracks").appendChild(container)
+  // culoare în funcție de categorie
+  let color = (track.category === "click") ? "#FF5555" : "#55AAFF"
 
-const ws=WaveSurfer.create({
+  const ws = WaveSurfer.create({
+    container:"#wave"+i,
+    waveColor: color,
+    progressColor:"#000",
+    height:120,
+    responsive:true
+  })
 
-container:"#wave"+i,
-waveColor:"#999",
-progressColor:"#000",
-height:80,
-responsive:true
-
+  ws.load(track.file)
+  players.push({ ws: ws, track: track })
 })
 
-ws.load(track.file)
+// Play / Pause
+function playAll(){ players.forEach(p=>p.ws.play()) }
+function pauseAll(){ players.forEach(p=>p.ws.pause()) }
 
-players.push(ws)
+// Mute
+function mute(i){ players[i].ws.setVolume(0) }
 
-})
-
-function playAll(){
-
-players.forEach(p=>{
-p.play()
-})
-
+// Toggle Solo corect
+function toggleSolo(i){
+  if(soloActive === i){
+    // deja solo, revenim la normal
+    players.forEach(p=>p.ws.setVolume(1))
+    soloActive = null
+  } else {
+    // setam solo
+    players.forEach((p,index)=>{
+      p.ws.setVolume(index===i ? 1 : 0)
+    })
+    soloActive = i
+  }
 }
-
-function pauseAll(){
-
-players.forEach(p=>{
-p.pause()
-})
-
-}
-
-function mute(i){
-
-players[i].setVolume(0)
-
-}
-
-function solo(i){
-
-players.forEach((p,index)=>{
-
-if(index===i){
-p.setVolume(1)
-}else{
-p.setVolume(0)
-}
-
-})
-
-}
-
 </script>
 
 </body>
-
 </html>
