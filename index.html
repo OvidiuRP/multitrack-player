@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
+
 <head>
+
 <meta charset="UTF-8">
 <title>Multitrack Player</title>
 
@@ -10,7 +12,7 @@
 
 body{
 font-family: Arial;
-max-width:700px;
+max-width:900px;
 margin:auto;
 padding:40px;
 }
@@ -19,8 +21,13 @@ padding:40px;
 margin-bottom:30px;
 }
 
+.wave{
+border:1px solid #ddd;
+}
+
 button{
 margin-right:10px;
+margin-bottom:5px;
 }
 
 </style>
@@ -41,10 +48,10 @@ margin-right:10px;
 const tracks = [
 
 { name:"Drums", file:"drums.mp3" },
-{ name:"Bass", file:"bass.mp3" },
+{ name:"Click", file:"Click.mp3" },
+{ name:"Cues", file:"Cues.mp3" },
 { name:"Guitar", file:"guitar.mp3" },
-{ name:"Piano", file:"piano.mp3" },
-{ name:"Vocals", file:"vocals.mp3" }
+{ name:"AG2", file:"Ag2.mp3" }
 
 ]
 
@@ -52,24 +59,25 @@ let players = []
 
 tracks.forEach((track,i)=>{
 
-const div=document.createElement("div")
-div.className="track"
+const container=document.createElement("div")
+container.className="track"
 
-div.innerHTML=`
+container.innerHTML=`
 <h4>${track.name}</h4>
 <button onclick="solo(${i})">Solo</button>
 <button onclick="mute(${i})">Mute</button>
-<div id="wave${i}"></div>
+<div id="wave${i}" class="wave"></div>
 `
 
-document.getElementById("tracks").appendChild(div)
+document.getElementById("tracks").appendChild(container)
 
 const ws=WaveSurfer.create({
 
-container:`#wave${i}`,
-waveColor:"gray",
-progressColor:"black",
-height:60
+container:"#wave"+i,
+waveColor:"#999",
+progressColor:"#000",
+height:80,
+responsive:true
 
 })
 
@@ -80,15 +88,25 @@ players.push(ws)
 })
 
 function playAll(){
-players.forEach(p=>p.play())
+
+players.forEach(p=>{
+p.play()
+})
+
 }
 
 function pauseAll(){
-players.forEach(p=>p.pause())
+
+players.forEach(p=>{
+p.pause()
+})
+
 }
 
 function mute(i){
+
 players[i].setVolume(0)
+
 }
 
 function solo(i){
@@ -108,4 +126,5 @@ p.setVolume(0)
 </script>
 
 </body>
+
 </html>
