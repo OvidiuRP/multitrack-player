@@ -10,7 +10,7 @@
 
 body{
 font-family:Arial;
-background:#2f2f2f;
+background:#3a3a3a;
 color:white;
 text-align:center;
 }
@@ -24,49 +24,41 @@ margin:20px;
 }
 
 button{
-padding:10px 16px;
+padding:10px 15px;
 margin:5px;
-font-size:14px;
 border:none;
 border-radius:6px;
 cursor:pointer;
+font-size:14px;
 }
 
-#play{background:#2ecc71;}
-#pause{background:#f1c40f;}
-#stop{background:#e74c3c;}
+#play{background:#27ae60}
+#pause{background:#f1c40f}
+#stop{background:#e74c3c}
 
 #waveform{
 width:90%;
-height:120px;
+height:140px;
 margin:auto;
-background:#444;
+background:#555;
 border-radius:6px;
-}
-
-.master{
-width:300px;
-margin:auto;
-margin-top:10px;
-}
-
-.master input{
-width:100%;
 }
 
 .tracks{
 width:90%;
 margin:auto;
 margin-top:25px;
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+display:flex;
+flex-wrap:wrap;
 gap:10px;
+justify-content:center;
 }
 
 .track{
-background:#3a3a3a;
-padding:8px;
+background:#444;
+padding:10px;
 border-radius:6px;
+width:120px;
 }
 
 .track.click{
@@ -79,42 +71,23 @@ border:2px solid orange;
 
 .track-name{
 font-size:12px;
-margin-bottom:6px;
-}
-
-.fader{
-height:90px;
+margin-bottom:8px;
 }
 
 .controls{
 display:flex;
 justify-content:center;
-gap:4px;
-margin-top:5px;
+gap:6px;
 }
 
 .controls button{
 font-size:11px;
-padding:3px 6px;
+padding:4px 6px;
 }
 
-.mute.active{
-background:red;
-}
-
-.solo.active{
-background:orange;
-}
-
-.scale{
-font-size:9px;
-line-height:1.1;
-margin-left:3px;
-}
-
-.faderbox{
-display:flex;
-justify-content:center;
+.fader{
+width:100%;
+margin-top:8px;
 }
 
 </style>
@@ -130,27 +103,22 @@ justify-content:center;
 <button id="stop">Stop</button>
 </div>
 
-<div class="master">
-Master Volume
-<input id="masterVolume" type="range" min="0" max="1" step="0.01" value="1">
-</div>
-
 <div id="waveform"></div>
 
 <div class="tracks" id="tracks"></div>
 
 <script>
 
-let wavesurfer=WaveSurfer.create({
+let wavesurfer = WaveSurfer.create({
 container:"#waveform",
-waveColor:"#777",
+waveColor:"#999",
 progressColor:"#fff",
 cursorColor:"#fff",
 height:120
 })
 
 let tracks=[]
-let audioNodes=[]
+let audios=[]
 
 fetch("tracks.json")
 .then(r=>r.json())
@@ -158,93 +126,61 @@ fetch("tracks.json")
 
 function init(list){
 
-list.sort((a,b)=>{
-
-let A=a.toLowerCase()
-let B=b.toLowerCase()
-
-if(A.includes("click"))return -1
-if(B.includes("click"))return 1
-
-if(A.includes("cues"))return -1
-if(B.includes("cues"))return 1
-
-return A.localeCompare(B)
-
-})
-
 const container=document.getElementById("tracks")
 
-list.forEach(file=>{
+list.forEach((file,i)=>{
 
 let name=file.replace(".mp3","")
 
 let audio=new Audio("audio/"+file)
-audio.loop=false
 
-let track=document.createElement("div")
-track.className="track"
-
-if(name.toLowerCase().includes("click")||name.toLowerCase().includes("cues")){
-track.classList.add("click")
+if(i==0){
+wavesurfer.load("audio/"+file)
 }
 
-track.innerHTML=`
+let div=document.createElement("div")
+div.className="track"
+
+if(name.toLowerCase().includes("click")||name.toLowerCase().includes("cues")){
+div.classList.add("click")
+}
+
+div.innerHTML=`
 
 <div class="track-name">${name}</div>
 
-<div class="faderbox">
-
-<input class="fader" type="range" min="0" max="1" step="0.01" value="1" orient="vertical">
-
-<div class="scale">
-100%<br>
-75%<br>
-50%<br>
-25%<br>
-0%
-</div>
-
-</div>
-
 <div class="controls">
-<button class="mute">M</button>
-<button class="solo">S</button>
+<button class="mute">Mute</button>
+<button class="solo">Solo</button>
 </div>
+
+<input class="fader" type="range" min="0" max="1" step="0.01" value="1">
 
 `
 
-container.appendChild(track)
+container.appendChild(div)
 
-let fader=track.querySelector(".fader")
-let muteBtn=track.querySelector(".mute")
-let soloBtn=track.querySelector(".solo")
+let muteBtn=div.querySelector(".mute")
+let soloBtn=div.querySelector(".solo")
+let fader=div.querySelector(".fader")
+
+muteBtn.onclick=()=>{
+audio.muted=!audio.muted
+muteBtn.style.background=audio.muted?"red":""
+}
+
+soloBtn.onclick=()=>{
+div.classList.toggle("solo")
+soloBtn.classList.toggle("active")
+updateSolo()
+}
 
 fader.oninput=()=>{
 audio.volume=fader.value
 }
 
-muteBtn.onclick=()=>{
-muteBtn.classList.toggle("active")
-audio.muted=muteBtn.classList.contains("active")
-}
-
-soloBtn.onclick=()=>{
-
-soloBtn.classList.toggle("active")
-track.classList.toggle("solo")
-
-updateSolo()
-
-}
-
-tracks.push({
-audio,
-track,
-soloBtn
-})
-
-audioNodes.push(audio)
+tracks.push({audio,soloBtn})
+audios.push(audio)
 
 })
 
@@ -256,9 +192,7 @@ let solos=tracks.filter(t=>t.soloBtn.classList.contains("active"))
 
 if(solos.length==0){
 
-tracks.forEach(t=>{
-t.audio.muted=false
-})
+tracks.forEach(t=>t.audio.muted=false)
 
 }else{
 
@@ -272,8 +206,10 @@ t.audio.muted=!t.soloBtn.classList.contains("active")
 
 function playAll(){
 
-audioNodes.forEach(a=>{
-a.currentTime=wavesurfer.getCurrentTime()
+let time=wavesurfer.getCurrentTime()
+
+audios.forEach(a=>{
+a.currentTime=time
 a.play()
 })
 
@@ -283,14 +219,14 @@ wavesurfer.play()
 
 function pauseAll(){
 
-audioNodes.forEach(a=>a.pause())
+audios.forEach(a=>a.pause())
 wavesurfer.pause()
 
 }
 
 function stopAll(){
 
-audioNodes.forEach(a=>{
+audios.forEach(a=>{
 a.pause()
 a.currentTime=0
 })
@@ -302,14 +238,6 @@ wavesurfer.stop()
 document.getElementById("play").onclick=playAll
 document.getElementById("pause").onclick=pauseAll
 document.getElementById("stop").onclick=stopAll
-
-document.getElementById("masterVolume").oninput=e=>{
-
-audioNodes.forEach(a=>{
-a.volume=e.target.value
-})
-
-}
 
 document.addEventListener("keydown",e=>{
 
