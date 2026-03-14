@@ -2,6 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
+
 <title>Multitrack Check</title>
 
 <script src="https://unpkg.com/wavesurfer.js@6"></script>
@@ -10,7 +11,7 @@
 
 body{
 font-family:Arial;
-background:#e5e5e5;
+background:#dcdcdc;
 max-width:1200px;
 margin:auto;
 padding:30px;
@@ -20,30 +21,36 @@ padding:30px;
 text-align:center;
 }
 
+#topbar{
+display:flex;
+justify-content:center;
+gap:50px;
+align-items:center;
+}
+
 #transport button{
 padding:8px 16px;
 margin:5px;
-cursor:pointer;
 }
 
 #waveform{
 height:180px;
-border:3px solid #666;
+border:3px solid #555;
+background:#eee;
 margin-top:20px;
-background:#ddd;
 }
 
 #mixer{
 display:flex;
 flex-wrap:wrap;
-gap:12px;
+gap:10px;
 margin-top:25px;
 }
 
 .channel{
 border:2px solid #4a7bd6;
-padding:8px;
 width:90px;
+padding:8px;
 text-align:center;
 background:#f5f5f5;
 }
@@ -56,21 +63,6 @@ border-color:#d64040;
 border-color:#ff8800;
 }
 
-.faderWrap{
-display:flex;
-justify-content:center;
-gap:4px;
-}
-
-.scale{
-font-size:10px;
-text-align:right;
-}
-
-.scale div{
-height:20px;
-}
-
 .fader{
 appearance:none;
 height:120px;
@@ -78,11 +70,8 @@ width:28px;
 writing-mode:bt-lr;
 }
 
-.fader::-webkit-slider-thumb{
-appearance:none;
-background:#444;
-width:24px;
-height:8px;
+.scale{
+font-size:10px;
 }
 
 .buttons{
@@ -90,21 +79,6 @@ display:flex;
 justify-content:center;
 gap:4px;
 margin-top:6px;
-}
-
-#topRow{
-display:flex;
-justify-content:center;
-align-items:center;
-gap:40px;
-}
-
-#master{
-text-align:right;
-}
-
-#master input{
-width:180px;
 }
 
 </style>
@@ -116,7 +90,7 @@ width:180px;
 
 <h2>Multitrack Check</h2>
 
-<div id="topRow">
+<div id="topbar">
 
 <div id="transport">
 <button id="play">Play</button>
@@ -124,9 +98,11 @@ width:180px;
 <button id="stop">Stop</button>
 </div>
 
-<div id="master">
-Master Volume<br>
-<input type="range" min="0" max="1" step="0.01" value="1" id="masterVol">
+<div>
+
+Master<br>
+<input type="range" id="master" min="0" max="1" step="0.01" value="1">
+
 </div>
 
 </div>
@@ -139,49 +115,62 @@ Master Volume<br>
 
 <script>
 
-const files=[
-"Click.mp3",
-"Cues.mp3",
-"Ag2.mp3",
-"drums.mp3",
-"guitar.mp3"
-]
+const ctx = new AudioContext()
 
-let audio=[]
-let volume=[]
-let muted=[]
-let master=1
-let solo=null
+let tracks=[]
+let gainNodes=[]
+let sources=[]
+let buffers=[]
 let isPlaying=false
+let startTime=0
+let pauseOffset=0
 
-const wave=WaveSurfer.create({
+const wave = WaveSurfer.create({
 
 container:"#waveform",
 waveColor:"#7fa9ff",
 progressColor:"#222",
-height:180,
-normalize:true,
-responsive:true
+height:180
 
 })
 
-wave.load(files[0])
+async function loadTracks(){
 
-files.forEach((file,i)=>{
+const res=await fetch("tracks.json")
 
-const name=file.replace(".mp3","")
+tracks=await res.json()
 
-const a=new Audio(file)
+for(let i=0;i<tracks.length;i++){
 
-audio.push(a)
+const response=await fetch("audio/"+tracks[i])
 
-volume[i]=1
-muted[i]=false
+const arrayBuffer=await response.arrayBuffer()
+
+const buffer=await ctx.decodeAudioData(arrayBuffer)
+
+buffers.push(buffer)
+
+const gain=ctx.createGain()
+
+gain.connect(ctx.destination)
+
+gainNodes.push(gain)
+
+createChannel(tracks[i],i)
+
+}
+
+wave.load("audio/"+tracks[0])
+
+}
+
+function createChannel(name,i){
 
 const div=document.createElement("div")
+
 div.className="channel"
 
-if(name.toLowerCase()=="click"||name.toLowerCase()=="cues"){
+if(name.toLowerCase().includes("click") || name.toLowerCase().includes("cues")){
 div.classList.add("click")
 }
 
@@ -189,25 +178,19 @@ div.innerHTML=`
 
 <div>${name}</div>
 
-<div class="faderWrap">
-
 <div class="scale">
-<div>100%</div>
-<div>75%</div>
-<div>50%</div>
-<div>25%</div>
-<div>0%</div>
+100%<br>
+75%<br>
+50%<br>
+25%<br>
+0%
 </div>
 
-<input type="range" min="0" max="1" step="0.01" value="1" class="fader" id="vol${i}">
-
-</div>
+<input type="range" class="fader" min="0" max="1" step="0.01" value="1" id="vol${i}">
 
 <div class="buttons">
-
 <button id="mute${i}">M</button>
 <button id="solo${i}">S</button>
-
 </div>
 
 `
@@ -215,40 +198,24 @@ div.innerHTML=`
 document.getElementById("mixer").appendChild(div)
 
 document.getElementById("vol"+i).oninput=e=>{
-volume[i]=parseFloat(e.target.value)
-updateVolume(i)
+
+gainNodes[i].gain.value=e.target.value
+
 }
 
 document.getElementById("mute"+i).onclick=()=>{
-muted[i]=!muted[i]
-updateVolume(i)
+
+gainNodes[i].gain.value=0
+
 }
 
 document.getElementById("solo"+i).onclick=()=>{
 
-solo=i
+gainNodes.forEach((g,index)=>{
 
-document.querySelectorAll(".channel").forEach(c=>c.classList.remove("solo"))
-
-div.classList.add("solo")
-
-audio.forEach((a,index)=>{
-a.volume=index===i?volume[i]*master:0
-})
-
-}
+g.gain.value=index===i?1:0
 
 })
-
-function updateVolume(i){
-
-if(muted[i]){
-
-audio[i].volume=0
-
-}else{
-
-audio[i].volume=volume[i]*master
 
 }
 
@@ -256,56 +223,57 @@ audio[i].volume=volume[i]*master
 
 function play(){
 
-audio.forEach(a=>a.play())
-wave.play()
+sources=[]
+
+for(let i=0;i<buffers.length;i++){
+
+const src=ctx.createBufferSource()
+
+src.buffer=buffers[i]
+
+src.connect(gainNodes[i])
+
+src.start(0,pauseOffset)
+
+sources.push(src)
+
+}
+
+startTime=ctx.currentTime-pauseOffset
 
 isPlaying=true
+
+wave.play()
 
 }
 
 function pause(){
 
-audio.forEach(a=>a.pause())
-wave.pause()
+sources.forEach(s=>s.stop())
+
+pauseOffset=ctx.currentTime-startTime
 
 isPlaying=false
+
+wave.pause()
 
 }
 
 function stop(){
 
-audio.forEach(a=>{
-a.pause()
-a.currentTime=0
-})
+sources.forEach(s=>s.stop())
 
-wave.stop()
+pauseOffset=0
 
 isPlaying=false
 
-}
-
-function restart(){
-
-audio.forEach(a=>{
-a.currentTime=0
-})
-
-wave.seekTo(0)
+wave.stop()
 
 }
 
 document.getElementById("play").onclick=play
 document.getElementById("pause").onclick=pause
 document.getElementById("stop").onclick=stop
-
-document.getElementById("masterVol").oninput=e=>{
-
-master=parseFloat(e.target.value)
-
-audio.forEach((a,i)=>updateVolume(i))
-
-}
 
 document.addEventListener("keydown",e=>{
 
@@ -324,23 +292,22 @@ play()
 if(e.code==="Enter"){
 
 if(isPlaying){
-restart()
+
+pauseOffset=0
 play()
+
 }else{
-restart()
+
+pauseOffset=0
+wave.seekTo(0)
+
 }
 
 }
 
 })
 
-wave.on("seek",p=>{
-
-const t=wave.getDuration()*p
-
-audio.forEach(a=>a.currentTime=t)
-
-})
+loadTracks()
 
 </script>
 
