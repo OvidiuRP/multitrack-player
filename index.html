@@ -2,35 +2,37 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Multitrack Player Avansat</title>
+<title>Multitrack Player</title>
+
 <script src="https://unpkg.com/wavesurfer.js@6"></script>
 
 <style>
+
 body{
-  font-family: Arial;
-  max-width:900px;
-  margin:auto;
-  padding:40px;
+font-family: Arial;
+max-width:900px;
+margin:auto;
+padding:40px;
 }
 
 .track{
-  margin-bottom:30px;
-  height:80px;       /* container fix */
-  overflow:hidden;   /* ascunde waveform overflow */
+margin-bottom:30px;
 }
 
 .wave{
-  height:120px;      /* waveform mare */
+height:140px;
 }
 
 button{
-  margin-right:10px;
-  margin-bottom:5px;
+margin-right:10px;
 }
+
 </style>
+
 </head>
 
 <body>
+
 <h2>Multitrack Player</h2>
 
 <button onclick="playAll()">Play</button>
@@ -39,72 +41,88 @@ button{
 <div id="tracks"></div>
 
 <script>
-// Lista track-urilor
+
 const tracks = [
-  { names:["Drums"], file:"drums.mp3", category:"instrument" },
-  { names:["Click"], file:"click.mp3", category:"click" },
-  { names:["Cues"], file:"cues.mp3", category:"click" },
-  { names:["Guitar","Eg1","Eg2","Acoustic","Electric","Ag1","Ag2"], file:"guitar.mp3", category:"instrument" },
-  { names:["AG2"], file:"ag2.mp3", category:"instrument" }
-];
 
-let players = [];
-let soloActive = null;
+{ name:"Drums", file:"drums.mp3", type:"instrument" },
+{ name:"Click", file:"click.mp3", type:"click" },
+{ name:"Cues", file:"cues.mp3", type:"click" },
+{ name:"Guitar", file:"guitar.mp3", type:"instrument" },
+{ name:"AG2", file:"ag2.mp3", type:"instrument" }
 
-tracks.forEach((track, i) => {
-  const container = document.createElement("div");
-  container.className = "track";
+]
 
-  container.innerHTML = `
-    <h4>${track.names[0]}</h4>
-    <button id="solo${i}">Solo</button>
-    <button id="mute${i}">Mute</button>
-    <div id="wave${i}" class="wave"></div>
-  `;
+let players=[]
+let soloIndex=null
 
-  document.getElementById("tracks").appendChild(container);
+tracks.forEach((track,i)=>{
 
-  // culoare per categorie
-  const waveColor = (track.category==="click") ? "#FF5555" : "#55AAFF";
+const color = track.type==="click" ? "#ff5a5a" : "#4aa3ff"
 
-  // creare WaveSurfer
-  const ws = WaveSurfer.create({
-    container: "#wave"+i,
-    waveColor: waveColor,
-    progressColor: "#000",
-    height:120,
-    responsive:true
-  });
+const div=document.createElement("div")
 
-  // încarcă fișierul
-  ws.load(track.file);
+div.className="track"
 
-  // păstrăm instanța
-  players.push(ws);
+div.innerHTML=`
 
-  // legare butoane Solo / Mute
-  document.getElementById("solo"+i).addEventListener("click", ()=>{
-    if(soloActive===i){
-      // deja solo → revenim la normal
-      players.forEach(p=>p.setVolume(1));
-      soloActive = null;
-    } else {
-      players.forEach((p,index)=>{
-        p.setVolume(index===i ? 1 : 0);
-      });
-      soloActive = i;
-    }
-  });
+<h4>${track.name}</h4>
 
-  document.getElementById("mute"+i).addEventListener("click", ()=>{
-    ws.setVolume(0);
-  });
+<button onclick="toggleSolo(${i})">Solo</button>
+<button onclick="mute(${i})">Mute</button>
 
-});
+<div id="wave${i}" class="wave"></div>
 
-// Play / Pause globale
-function playAll(){ players.forEach(p=>p.play()); }
-function pauseAll(){ players.forEach(p=>p.pause()); }
+`
+
+document.getElementById("tracks").appendChild(div)
+
+const ws = WaveSurfer.create({
+
+container:"#wave"+i,
+waveColor:color,
+progressColor:"#000",
+height:140,
+responsive:true
+
+})
+
+ws.load(track.file)
+
+players.push(ws)
+
+})
+
+function playAll(){
+players.forEach(p=>p.play())
+}
+
+function pauseAll(){
+players.forEach(p=>p.pause())
+}
+
+function mute(i){
+players[i].setVolume(0)
+}
+
+function toggleSolo(i){
+
+if(soloIndex===i){
+
+players.forEach(p=>p.setVolume(1))
+soloIndex=null
+
+}else{
+
+players.forEach((p,index)=>{
+p.setVolume(index===i?1:0)
+})
+
+soloIndex=i
+
+}
+
+}
+
 </script>
 
 </body>
