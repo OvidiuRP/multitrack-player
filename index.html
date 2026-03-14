@@ -12,72 +12,118 @@ body{
 font-family:Arial;
 max-width:1300px;
 margin:auto;
-padding:40px;
+padding:30px;
 }
 
-#header{
+#topbar{
+
+display:flex;
+justify-content:space-between;
+align-items:center;
+
+}
+
+#transport{
+
 text-align:center;
+margin-top:10px;
+
+}
+
+button{
+
+padding:6px 14px;
+margin:4px;
+
 }
 
 #waveform{
+
 height:180px;
-border:3px solid #888;
+border:3px solid #777;
 margin-top:20px;
+
 }
 
-#transport button{
-padding:8px 16px;
-margin:6px;
-cursor:pointer;
+.trackWave{
+
+opacity:0.2;
+
 }
 
-#transport button.active{
-background:#222;
-color:white;
+.trackWave.solo{
+
+opacity:1;
+
 }
 
 #mixer{
+
 display:flex;
 flex-wrap:wrap;
-gap:10px;
+gap:12px;
 margin-top:30px;
+
 }
 
 .channel{
 
-border:2px solid #3a7bd5;
+border:2px solid #4a7bd6;
+padding:8px;
 width:90px;
-padding:6px;
 text-align:center;
 
 }
 
 .channel.click{
-border-color:#c63b3b;
+
+border-color:#d64040;
+
 }
 
 .channel.solo{
+
 border-color:#ff8800;
+
 }
 
-.channel-name{
-font-size:12px;
-margin-bottom:6px;
-}
+.faderWrap{
 
-.fader{
-
-writing-mode:bt-lr;
--webkit-appearance:slider-vertical;
-height:100px;
-width:24px;
+display:flex;
+align-items:center;
+justify-content:center;
+gap:4px;
 
 }
 
 .scale{
 
-font-size:9px;
-line-height:18px;
+font-size:10px;
+text-align:right;
+
+}
+
+.scale div{
+
+height:18px;
+
+}
+
+.fader{
+
+appearance:none;
+width:26px;
+height:120px;
+writing-mode:bt-lr;
+
+}
+
+.fader::-webkit-slider-thumb{
+
+appearance:none;
+background:#444;
+width:24px;
+height:8px;
 
 }
 
@@ -86,48 +132,20 @@ line-height:18px;
 display:flex;
 justify-content:center;
 gap:4px;
-margin-top:6px;
-
-}
-
-.buttons button{
-
-font-size:10px;
-padding:2px 6px;
-
-}
-
-button.solo-active{
-
-background:#ff8800;
-color:white;
+margin-top:8px;
 
 }
 
 #master{
 
-margin-top:30px;
+text-align:right;
+
 }
 
 #master input{
 
-width:300px;
+width:200px;
 
-}
-
-#highlight{
-
-position:absolute;
-height:180px;
-width:100%;
-background:rgba(255,136,0,0.2);
-pointer-events:none;
-display:none;
-
-}
-
-#wave-container{
-position:relative;
 }
 
 </style>
@@ -135,9 +153,18 @@ position:relative;
 
 <body>
 
-<div id="header">
+<div id="topbar">
 
 <h2>Multitrack Check</h2>
+
+<div id="master">
+
+Master Volume<br>
+<input type="range" min="0" max="1" step="0.01" value="1" id="masterVol">
+
+</div>
+
+</div>
 
 <div id="transport">
 
@@ -147,26 +174,9 @@ position:relative;
 
 </div>
 
-</div>
-
-<div id="wave-container">
-
 <div id="waveform"></div>
-<div id="highlight"></div>
-
-</div>
 
 <div id="mixer"></div>
-
-<div id="master">
-
-Master Volume
-
-<br>
-
-<input id="masterVol" type="range" min="0" max="1" step="0.01" value="1">
-
-</div>
 
 <script>
 
@@ -178,52 +188,69 @@ const files=[
 "guitar.mp3"
 ]
 
+let waves=[]
 let audio=[]
-let soloIndex=null
+let trackVolume=[]
+let trackMuted=[]
+let soloTrack=null
+let masterVolume=1
 let isPlaying=false
 
-const wavesurfer=WaveSurfer.create({
+files.forEach((file,i)=>{
+
+const name=file.replace(".mp3","")
+
+trackVolume[i]=1
+trackMuted[i]=false
+
+const ws=WaveSurfer.create({
 
 container:"#waveform",
 height:180,
-waveColor:"#6aa8ff",
-progressColor:"#000"
+waveColor:"#7aa8ff",
+progressColor:"#000",
+normalize:true,
+responsive:true
 
 })
 
-wavesurfer.load(files[0])
+ws.load(file)
 
-files.forEach((f,i)=>{
+ws.container.classList.add("trackWave")
 
-const name=f.replace(".mp3","")
+waves.push(ws)
 
-const a=new Audio(f)
+const a=new Audio(file)
 
 audio.push(a)
 
-const div=document.createElement("div")
+const ch=document.createElement("div")
 
-div.className="channel"
+ch.className="channel"
 
-if(name.toLowerCase()=="click" || name.toLowerCase()=="cues"){
+if(name.toLowerCase()=="click"||name.toLowerCase()=="cues"){
 
-div.classList.add("click")
+ch.classList.add("click")
 
 }
 
-div.innerHTML=`
+ch.innerHTML=`
 
-<div class="channel-name">${name}</div>
+<div>${name}</div>
 
-<input type="range" class="fader" min="0" max="1" step="0.01" value="1" id="vol${i}">
+<div class="faderWrap">
 
 <div class="scale">
 
-100<br>
-75<br>
-50<br>
-25<br>
-0
+<div>100%</div>
+<div>75%</div>
+<div>50%</div>
+<div>25%</div>
+<div>0%</div>
+
+</div>
+
+<input type="range" min="0" max="1" step="0.01" value="1" class="fader" id="vol${i}">
 
 </div>
 
@@ -236,25 +263,19 @@ div.innerHTML=`
 
 `
 
-document.getElementById("mixer").appendChild(div)
+document.getElementById("mixer").appendChild(ch)
 
-document.getElementById("vol"+i).oninput=(e)=>{
+document.getElementById("vol"+i).oninput=e=>{
 
-audio[i].volume=e.target.value
+trackVolume[i]=parseFloat(e.target.value)
+updateVolume(i)
 
 }
 
 document.getElementById("mute"+i).onclick=()=>{
 
-if(audio[i].volume>0){
-
-audio[i].volume=0
-
-}else{
-
-audio[i].volume=1
-
-}
+trackMuted[i]=!trackMuted[i]
+updateVolume(i)
 
 }
 
@@ -266,37 +287,38 @@ toggleSolo(i)
 
 })
 
-function toggleSolo(i){
+function updateVolume(i){
 
-if(soloIndex===i){
+if(trackMuted[i]){
 
-audio.forEach(a=>a.volume=1)
-
-document.getElementById("highlight").style.display="none"
-
-soloIndex=null
+audio[i].volume=0
 
 }else{
 
-audio.forEach((a,index)=>{
+audio[i].volume=trackVolume[i]*masterVolume
 
-a.volume=index===i?1:0
+}
+
+}
+
+function toggleSolo(i){
+
+soloTrack=i
+
+waves.forEach((w,index)=>{
+
+w.container.classList.remove("solo")
 
 })
 
-soloIndex=i
-
-document.getElementById("highlight").style.display="block"
-
-}
+waves[i].container.classList.add("solo")
 
 }
 
 function play(){
 
 audio.forEach(a=>a.play())
-
-wavesurfer.play()
+waves.forEach(w=>w.play())
 
 isPlaying=true
 
@@ -305,8 +327,7 @@ isPlaying=true
 function pause(){
 
 audio.forEach(a=>a.pause())
-
-wavesurfer.pause()
+waves.forEach(w=>w.pause())
 
 isPlaying=false
 
@@ -321,9 +342,17 @@ a.currentTime=0
 
 })
 
-wavesurfer.stop()
+waves.forEach(w=>w.stop())
 
 isPlaying=false
+
+}
+
+function seekStart(){
+
+audio.forEach(a=>a.currentTime=0)
+
+waves.forEach(w=>w.seekTo(0))
 
 }
 
@@ -331,7 +360,7 @@ document.getElementById("play").onclick=play
 document.getElementById("pause").onclick=pause
 document.getElementById("stop").onclick=stop
 
-document.addEventListener("keydown",(e)=>{
+document.addEventListener("keydown",e=>{
 
 if(e.code==="Space"){
 
@@ -353,12 +382,12 @@ if(e.code==="Enter"){
 
 if(isPlaying){
 
-stop()
+seekStart()
 play()
 
 }else{
 
-stop()
+seekStart()
 
 }
 
@@ -366,25 +395,17 @@ stop()
 
 })
 
-document.getElementById("masterVol").oninput=(e)=>{
+document.getElementById("masterVol").oninput=e=>{
 
-const v=e.target.value
+masterVolume=parseFloat(e.target.value)
 
-audio.forEach(a=>{
+audio.forEach((a,i)=>{
 
-a.volume=a.volume*v
+updateVolume(i)
 
 })
 
 }
-
-wavesurfer.on("seek",(p)=>{
-
-const t=wavesurfer.getDuration()*p
-
-audio.forEach(a=>a.currentTime=t)
-
-})
 
 </script>
 
