@@ -10,142 +10,101 @@
 
 body{
 font-family:Arial;
-max-width:1300px;
+background:#e5e5e5;
+max-width:1200px;
 margin:auto;
 padding:30px;
 }
 
-#topbar{
-
-display:flex;
-justify-content:space-between;
-align-items:center;
-
-}
-
-#transport{
-
+#header{
 text-align:center;
-margin-top:10px;
-
 }
 
-button{
-
-padding:6px 14px;
-margin:4px;
-
+#transport button{
+padding:8px 16px;
+margin:5px;
+cursor:pointer;
 }
 
 #waveform{
-
 height:180px;
-border:3px solid #777;
+border:3px solid #666;
 margin-top:20px;
-
-}
-
-.trackWave{
-
-opacity:0.2;
-
-}
-
-.trackWave.solo{
-
-opacity:1;
-
+background:#ddd;
 }
 
 #mixer{
-
 display:flex;
 flex-wrap:wrap;
 gap:12px;
-margin-top:30px;
-
+margin-top:25px;
 }
 
 .channel{
-
 border:2px solid #4a7bd6;
 padding:8px;
 width:90px;
 text-align:center;
-
+background:#f5f5f5;
 }
 
 .channel.click{
-
 border-color:#d64040;
-
 }
 
 .channel.solo{
-
 border-color:#ff8800;
-
 }
 
 .faderWrap{
-
 display:flex;
-align-items:center;
 justify-content:center;
 gap:4px;
-
 }
 
 .scale{
-
 font-size:10px;
 text-align:right;
-
 }
 
 .scale div{
-
-height:18px;
-
+height:20px;
 }
 
 .fader{
-
 appearance:none;
-width:26px;
 height:120px;
+width:28px;
 writing-mode:bt-lr;
-
 }
 
 .fader::-webkit-slider-thumb{
-
 appearance:none;
 background:#444;
 width:24px;
 height:8px;
-
 }
 
 .buttons{
-
 display:flex;
 justify-content:center;
 gap:4px;
-margin-top:8px;
+margin-top:6px;
+}
 
+#topRow{
+display:flex;
+justify-content:center;
+align-items:center;
+gap:40px;
 }
 
 #master{
-
 text-align:right;
-
 }
 
 #master input{
-
-width:200px;
-
+width:180px;
 }
 
 </style>
@@ -153,24 +112,24 @@ width:200px;
 
 <body>
 
-<div id="topbar">
+<div id="header">
 
 <h2>Multitrack Check</h2>
 
-<div id="master">
-
-Master Volume<br>
-<input type="range" min="0" max="1" step="0.01" value="1" id="masterVol">
-
-</div>
-
-</div>
+<div id="topRow">
 
 <div id="transport">
-
 <button id="play">Play</button>
 <button id="pause">Pause</button>
 <button id="stop">Stop</button>
+</div>
+
+<div id="master">
+Master Volume<br>
+<input type="range" min="0" max="1" step="0.01" value="1" id="masterVol">
+</div>
+
+</div>
 
 </div>
 
@@ -188,66 +147,56 @@ const files=[
 "guitar.mp3"
 ]
 
-let waves=[]
 let audio=[]
-let trackVolume=[]
-let trackMuted=[]
-let soloTrack=null
-let masterVolume=1
+let volume=[]
+let muted=[]
+let master=1
+let solo=null
 let isPlaying=false
 
-files.forEach((file,i)=>{
-
-const name=file.replace(".mp3","")
-
-trackVolume[i]=1
-trackMuted[i]=false
-
-const ws=WaveSurfer.create({
+const wave=WaveSurfer.create({
 
 container:"#waveform",
+waveColor:"#7fa9ff",
+progressColor:"#222",
 height:180,
-waveColor:"#7aa8ff",
-progressColor:"#000",
 normalize:true,
 responsive:true
 
 })
 
-ws.load(file)
+wave.load(files[0])
 
-ws.container.classList.add("trackWave")
+files.forEach((file,i)=>{
 
-waves.push(ws)
+const name=file.replace(".mp3","")
 
 const a=new Audio(file)
 
 audio.push(a)
 
-const ch=document.createElement("div")
+volume[i]=1
+muted[i]=false
 
-ch.className="channel"
+const div=document.createElement("div")
+div.className="channel"
 
 if(name.toLowerCase()=="click"||name.toLowerCase()=="cues"){
-
-ch.classList.add("click")
-
+div.classList.add("click")
 }
 
-ch.innerHTML=`
+div.innerHTML=`
 
 <div>${name}</div>
 
 <div class="faderWrap">
 
 <div class="scale">
-
 <div>100%</div>
 <div>75%</div>
 <div>50%</div>
 <div>25%</div>
 <div>0%</div>
-
 </div>
 
 <input type="range" min="0" max="1" step="0.01" value="1" class="fader" id="vol${i}">
@@ -263,25 +212,29 @@ ch.innerHTML=`
 
 `
 
-document.getElementById("mixer").appendChild(ch)
+document.getElementById("mixer").appendChild(div)
 
 document.getElementById("vol"+i).oninput=e=>{
-
-trackVolume[i]=parseFloat(e.target.value)
+volume[i]=parseFloat(e.target.value)
 updateVolume(i)
-
 }
 
 document.getElementById("mute"+i).onclick=()=>{
-
-trackMuted[i]=!trackMuted[i]
+muted[i]=!muted[i]
 updateVolume(i)
-
 }
 
 document.getElementById("solo"+i).onclick=()=>{
 
-toggleSolo(i)
+solo=i
+
+document.querySelectorAll(".channel").forEach(c=>c.classList.remove("solo"))
+
+div.classList.add("solo")
+
+audio.forEach((a,index)=>{
+a.volume=index===i?volume[i]*master:0
+})
 
 }
 
@@ -289,36 +242,22 @@ toggleSolo(i)
 
 function updateVolume(i){
 
-if(trackMuted[i]){
+if(muted[i]){
 
 audio[i].volume=0
 
 }else{
 
-audio[i].volume=trackVolume[i]*masterVolume
+audio[i].volume=volume[i]*master
 
 }
-
-}
-
-function toggleSolo(i){
-
-soloTrack=i
-
-waves.forEach((w,index)=>{
-
-w.container.classList.remove("solo")
-
-})
-
-waves[i].container.classList.add("solo")
 
 }
 
 function play(){
 
 audio.forEach(a=>a.play())
-waves.forEach(w=>w.play())
+wave.play()
 
 isPlaying=true
 
@@ -327,7 +266,7 @@ isPlaying=true
 function pause(){
 
 audio.forEach(a=>a.pause())
-waves.forEach(w=>w.pause())
+wave.pause()
 
 isPlaying=false
 
@@ -336,29 +275,37 @@ isPlaying=false
 function stop(){
 
 audio.forEach(a=>{
-
 a.pause()
 a.currentTime=0
-
 })
 
-waves.forEach(w=>w.stop())
+wave.stop()
 
 isPlaying=false
 
 }
 
-function seekStart(){
+function restart(){
 
-audio.forEach(a=>a.currentTime=0)
+audio.forEach(a=>{
+a.currentTime=0
+})
 
-waves.forEach(w=>w.seekTo(0))
+wave.seekTo(0)
 
 }
 
 document.getElementById("play").onclick=play
 document.getElementById("pause").onclick=pause
 document.getElementById("stop").onclick=stop
+
+document.getElementById("masterVol").oninput=e=>{
+
+master=parseFloat(e.target.value)
+
+audio.forEach((a,i)=>updateVolume(i))
+
+}
 
 document.addEventListener("keydown",e=>{
 
@@ -367,13 +314,9 @@ if(e.code==="Space"){
 e.preventDefault()
 
 if(isPlaying){
-
 pause()
-
 }else{
-
 play()
-
 }
 
 }
@@ -381,31 +324,23 @@ play()
 if(e.code==="Enter"){
 
 if(isPlaying){
-
-seekStart()
+restart()
 play()
-
 }else{
-
-seekStart()
-
+restart()
 }
 
 }
 
 })
 
-document.getElementById("masterVol").oninput=e=>{
+wave.on("seek",p=>{
 
-masterVolume=parseFloat(e.target.value)
+const t=wave.getDuration()*p
 
-audio.forEach((a,i)=>{
-
-updateVolume(i)
+audio.forEach(a=>a.currentTime=t)
 
 })
-
-}
 
 </script>
 
