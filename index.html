@@ -9,22 +9,32 @@
 <style>
 
 body{
-font-family: Arial;
-max-width:900px;
+font-family:Arial;
+max-width:1000px;
 margin:auto;
 padding:40px;
 }
 
 .track{
-margin-bottom:30px;
+margin-bottom:35px;
+padding:10px;
+border-bottom:1px solid #ddd;
 }
 
 .wave{
-height:140px;
+height:120px;
+margin-top:5px;
 }
 
-button{
-margin-right:10px;
+.controls{
+display:flex;
+align-items:center;
+gap:10px;
+margin-top:5px;
+}
+
+.volume{
+width:150px;
 }
 
 </style>
@@ -42,13 +52,13 @@ margin-right:10px;
 
 <script>
 
-const tracks = [
+const tracks=[
 
-{ name:"Drums", file:"drums.mp3", type:"instrument" },
-{ name:"Click", file:"click.mp3", type:"click" },
-{ name:"Cues", file:"cues.mp3", type:"click" },
-{ name:"Guitar", file:"guitar.mp3", type:"instrument" },
-{ name:"AG2", file:"ag2.mp3", type:"instrument" }
+{ name:"Drums", file:"drums.mp3", type:"instrument"},
+{ name:"Click", file:"click.mp3", type:"click"},
+{ name:"Cues", file:"cues.mp3", type:"click"},
+{ name:"Guitar", file:"guitar.mp3", type:"instrument"},
+{ name:"AG2", file:"ag2.mp3", type:"instrument"}
 
 ]
 
@@ -57,7 +67,7 @@ let soloIndex=null
 
 tracks.forEach((track,i)=>{
 
-const color = track.type==="click" ? "#ff5a5a" : "#4aa3ff"
+const color=track.type==="click" ? "#ff5555" : "#4aa3ff"
 
 const div=document.createElement("div")
 
@@ -67,8 +77,16 @@ div.innerHTML=`
 
 <h4>${track.name}</h4>
 
-<button onclick="toggleSolo(${i})">Solo</button>
-<button onclick="mute(${i})">Mute</button>
+<div class="controls">
+
+<button id="solo${i}">Solo</button>
+<button id="mute${i}">Mute</button>
+
+<label>Vol</label>
+<input type="range" min="0" max="1" step="0.01" value="1"
+class="volume" id="vol${i}">
+
+</div>
 
 <div id="wave${i}" class="wave"></div>
 
@@ -76,13 +94,13 @@ div.innerHTML=`
 
 document.getElementById("tracks").appendChild(div)
 
-const ws = WaveSurfer.create({
+const ws=WaveSurfer.create({
 
 container:"#wave"+i,
+backend:"MediaElement",
 waveColor:color,
 progressColor:"#000",
-height:140,
-responsive:true
+height:120
 
 })
 
@@ -90,18 +108,36 @@ ws.load(track.file)
 
 players.push(ws)
 
+document.getElementById("solo"+i).onclick=()=>toggleSolo(i)
+
+document.getElementById("mute"+i).onclick=()=>{
+
+if(ws.getVolume()>0){
+ws.setVolume(0)
+}else{
+ws.setVolume(1)
+}
+
+}
+
+document.getElementById("vol"+i).oninput=(e)=>{
+
+ws.setVolume(e.target.value)
+
+}
+
 })
 
 function playAll(){
+
 players.forEach(p=>p.play())
+
 }
 
 function pauseAll(){
-players.forEach(p=>p.pause())
-}
 
-function mute(i){
-players[i].setVolume(0)
+players.forEach(p=>p.pause())
+
 }
 
 function toggleSolo(i){
@@ -114,7 +150,9 @@ soloIndex=null
 }else{
 
 players.forEach((p,index)=>{
+
 p.setVolume(index===i?1:0)
+
 })
 
 soloIndex=i
