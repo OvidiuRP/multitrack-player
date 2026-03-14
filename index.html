@@ -16,28 +16,30 @@ padding:40px;
 }
 
 .wave{
-height:180px;
+height:200px;
+}
+
+.track{
+margin-bottom:35px;
 }
 
 .controls{
 display:flex;
 gap:10px;
 align-items:center;
-margin-bottom:5px;
+margin-bottom:8px;
 }
 
 button{
-padding:6px 12px;
+padding:7px 14px;
 cursor:pointer;
+border:none;
+background:#ddd;
 }
 
 button.active{
 background:#222;
 color:white;
-}
-
-.track{
-margin-bottom:35px;
 }
 
 .volume{
@@ -51,26 +53,36 @@ width:150px;
 
 <h2>Multitrack Player</h2>
 
-<button onclick="playAll()">Play</button>
-<button onclick="pauseAll()">Pause</button>
-<button onclick="stopAll()">Stop</button>
+<div class="controls">
+
+<button id="playBtn">Play</button>
+<button id="pauseBtn">Pause</button>
+<button id="stopBtn">Stop</button>
+
+</div>
 
 <div id="tracks"></div>
 
 <script>
 
+const tracks=[
+
+{file:"drums.mp3"},
+{file:"Click.mp3"},
+{file:"Cues.mp3"},
+{file:"guitar.mp3"},
+{file:"Ag2.mp3"}
+
+]
+
 let players=[]
 let soloIndex=null
 
-fetch("tracks.json")
-.then(res=>res.json())
-.then(data=>{
+tracks.forEach((track,i)=>{
 
-data.tracks.forEach((file,i)=>{
+const name=track.file.replace(".mp3","")
 
-let name=file.replace(".mp3","")
-
-let type=(name.toLowerCase()=="click" || name.toLowerCase()=="cues")
+const type=(name.toLowerCase()=="click" || name.toLowerCase()=="cues")
 ? "click"
 : "instrument"
 
@@ -89,8 +101,8 @@ div.innerHTML=`
 <button id="mute${i}">Mute</button>
 
 <label>Vol</label>
-<input type="range" min="0" max="1" step="0.01" value="1"
-class="volume" id="vol${i}">
+<input type="range" min="0" max="1" step="0.01"
+value="1" class="volume" id="vol${i}">
 
 </div>
 
@@ -106,11 +118,11 @@ container:"#wave"+i,
 backend:"MediaElement",
 waveColor:color,
 progressColor:"#000",
-height:180
+height:200
 
 })
 
-ws.load(file)
+ws.load(track.file)
 
 players.push(ws)
 
@@ -118,11 +130,7 @@ ws.on("seek",(progress)=>{
 
 if(soloIndex!==null){
 
-if(players.indexOf(ws)===soloIndex){
-
 players[soloIndex].seekTo(progress)
-
-}
 
 }else{
 
@@ -143,17 +151,19 @@ ws.setVolume(e.target.value)
 
 })
 
-})
-
 function playAll(){
 
 players.forEach(p=>p.play())
+
+setActive("playBtn")
 
 }
 
 function pauseAll(){
 
 players.forEach(p=>p.pause())
+
+setActive("pauseBtn")
 
 }
 
@@ -164,7 +174,22 @@ p.pause()
 p.seekTo(0)
 })
 
+setActive("stopBtn")
+
 }
+
+function setActive(id){
+
+document.querySelectorAll("#playBtn,#pauseBtn,#stopBtn")
+.forEach(b=>b.classList.remove("active"))
+
+document.getElementById(id).classList.add("active")
+
+}
+
+document.getElementById("playBtn").onclick=playAll
+document.getElementById("pauseBtn").onclick=pauseAll
+document.getElementById("stopBtn").onclick=stopAll
 
 function toggleSolo(i){
 
@@ -198,7 +223,6 @@ soloIndex=i
 function toggleMute(i){
 
 const button=document.getElementById("mute"+i)
-
 const ws=players[i]
 
 if(ws.getVolume()>0){
