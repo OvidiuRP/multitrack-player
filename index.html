@@ -10,34 +10,34 @@
 
 body{
 font-family:Arial;
-max-width:1000px;
+max-width:1100px;
 margin:auto;
 padding:40px;
 }
 
-.track{
-margin-bottom:30px;
-}
-
 .wave{
-height:120px;
-margin-top:8px;
+height:180px;
 }
 
 .controls{
 display:flex;
 gap:10px;
 align-items:center;
-margin-top:5px;
+margin-bottom:5px;
 }
 
 button{
-padding:5px 10px;
+padding:6px 12px;
+cursor:pointer;
 }
 
 button.active{
 background:#222;
 color:white;
+}
+
+.track{
+margin-bottom:35px;
 }
 
 .volume{
@@ -53,35 +53,35 @@ width:150px;
 
 <button onclick="playAll()">Play</button>
 <button onclick="pauseAll()">Pause</button>
+<button onclick="stopAll()">Stop</button>
 
 <div id="tracks"></div>
 
 <script>
 
-const tracks=[
-
-{ name:"Drums", file:"drums.mp3", type:"instrument"},
-{ name:"Click", file:"Click.mp3", type:"click"},
-{ name:"Cues", file:"Cues.mp3", type:"click"},
-{ name:"Guitar", file:"guitar.mp3", type:"instrument"},
-{ name:"AG2", file:"Ag2.mp3", type:"instrument"}
-
-]
-
 let players=[]
-let soloTrack=null
+let soloIndex=null
 
-tracks.forEach((track,i)=>{
+fetch("tracks.json")
+.then(res=>res.json())
+.then(data=>{
 
-const color = track.type==="click" ? "#ff5555" : "#4aa3ff"
+data.tracks.forEach((file,i)=>{
+
+let name=file.replace(".mp3","")
+
+let type=(name.toLowerCase()=="click" || name.toLowerCase()=="cues")
+? "click"
+: "instrument"
+
+const color= type==="click" ? "#ff5555" : "#4aa3ff"
 
 const div=document.createElement("div")
-
 div.className="track"
 
 div.innerHTML=`
 
-<h4>${track.name}</h4>
+<h4>${name}</h4>
 
 <div class="controls">
 
@@ -100,68 +100,116 @@ class="volume" id="vol${i}">
 
 document.getElementById("tracks").appendChild(div)
 
-const ws = WaveSurfer.create({
+const ws=WaveSurfer.create({
 
 container:"#wave"+i,
 backend:"MediaElement",
 waveColor:color,
 progressColor:"#000",
-height:120
+height:180
 
 })
 
-ws.load(track.file)
+ws.load(file)
 
 players.push(ws)
 
-document.getElementById("vol"+i).oninput=(e)=>{
-ws.setVolume(e.target.value)
+ws.on("seek",(progress)=>{
+
+if(soloIndex!==null){
+
+if(players.indexOf(ws)===soloIndex){
+
+players[soloIndex].seekTo(progress)
+
 }
 
-document.getElementById("mute"+i).onclick=()=>{
-
-if(ws.getVolume()>0){
-ws.setVolume(0)
 }else{
-ws.setVolume(1)
-}
+
+players.forEach(p=>p.seekTo(progress))
 
 }
+
+})
 
 document.getElementById("solo"+i).onclick=()=>toggleSolo(i)
+document.getElementById("mute"+i).onclick=()=>toggleMute(i)
+
+document.getElementById("vol"+i).oninput=(e)=>{
+
+ws.setVolume(e.target.value)
+
+}
+
+})
 
 })
 
 function playAll(){
+
 players.forEach(p=>p.play())
+
 }
 
 function pauseAll(){
+
 players.forEach(p=>p.pause())
+
+}
+
+function stopAll(){
+
+players.forEach(p=>{
+p.pause()
+p.seekTo(0)
+})
+
 }
 
 function toggleSolo(i){
 
 const button=document.getElementById("solo"+i)
 
-if(soloTrack===i){
+if(soloIndex===i){
 
 players.forEach(p=>p.setVolume(1))
 button.classList.remove("active")
-soloTrack=null
+soloIndex=null
 
 }else{
 
 players.forEach((p,index)=>{
+
 p.setVolume(index===i?1:0)
+
 })
 
-document.querySelectorAll("button[id^='solo']")
+document.querySelectorAll("[id^='solo']")
 .forEach(b=>b.classList.remove("active"))
 
 button.classList.add("active")
 
-soloTrack=i
+soloIndex=i
+
+}
+
+}
+
+function toggleMute(i){
+
+const button=document.getElementById("mute"+i)
+
+const ws=players[i]
+
+if(ws.getVolume()>0){
+
+ws.setVolume(0)
+button.classList.add("active")
+
+}else{
+
+ws.setVolume(1)
+button.classList.remove("active")
 
 }
 
