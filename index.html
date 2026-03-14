@@ -10,41 +10,64 @@
 
 body{
 font-family:Arial;
-max-width:1000px;
+max-width:1200px;
 margin:auto;
 padding:40px;
 }
 
-#waveform{
-height:200px;
-margin-bottom:40px;
-}
-
-.track{
-display:flex;
-align-items:center;
-gap:10px;
-margin-bottom:12px;
-}
-
-button{
-padding:6px 12px;
+#transport button{
+padding:6px 14px;
+margin-right:8px;
 cursor:pointer;
-border:none;
-background:#ddd;
 }
 
-button.active{
+#transport button.active{
 background:#222;
 color:white;
 }
 
-.volume{
-width:120px;
+#waveform{
+height:180px;
+border:3px solid #999;
+margin-top:20px;
+margin-bottom:30px;
 }
 
-.highlight{
-outline:4px solid #ff8800;
+#mixer{
+display:flex;
+gap:10px;
+overflow-x:auto;
+}
+
+.channel{
+border:2px solid #ccc;
+padding:8px;
+width:70px;
+text-align:center;
+font-size:12px;
+}
+
+.channel.active{
+border-color:#ff8800;
+}
+
+.channel button{
+font-size:11px;
+margin:2px;
+padding:2px 6px;
+}
+
+.channel button.active{
+background:#222;
+color:white;
+}
+
+.fader{
+writing-mode: bt-lr;
+-webkit-appearance: slider-vertical;
+height:80px;
+width:18px;
+margin-top:6px;
 }
 
 </style>
@@ -54,12 +77,10 @@ outline:4px solid #ff8800;
 
 <h2>Multitrack Player</h2>
 
-<div>
-
+<div id="transport">
 <button id="playBtn">Play</button>
 <button id="pauseBtn">Pause</button>
 <button id="stopBtn">Stop</button>
-
 </div>
 
 <div id="waveform"></div>
@@ -68,32 +89,46 @@ outline:4px solid #ff8800;
 
 <script>
 
-const tracks=[
-
-"drums.mp3",
+const trackFiles=[
 "Click.mp3",
 "Cues.mp3",
-"guitar.mp3",
-"Ag2.mp3"
-
+"Ag2.mp3",
+"drums.mp3",
+"guitar.mp3"
 ]
+
+function sortTracks(list){
+
+let click=list.filter(f=>f.toLowerCase().startsWith("click"))
+let cues=list.filter(f=>f.toLowerCase().startsWith("cues"))
+
+let rest=list.filter(f=>
+!f.toLowerCase().startsWith("click") &&
+!f.toLowerCase().startsWith("cues")
+)
+
+rest.sort()
+
+return [...click,...cues,...rest]
+
+}
+
+const tracks=sortTracks(trackFiles)
 
 let audioTracks=[]
 let soloIndex=null
 
-const wavesurfer = WaveSurfer.create({
+const wavesurfer=WaveSurfer.create({
 
 container:"#waveform",
+backend:"MediaElement",
 waveColor:"#4aa3ff",
 progressColor:"#000",
-height:200,
-backend:"MediaElement"
+height:180
 
 })
 
-wavesurfer.load(tracks[0]) // folosim primul track pentru waveform
-
-const mixer=document.getElementById("mixer")
+wavesurfer.load(tracks[0])
 
 tracks.forEach((file,i)=>{
 
@@ -104,25 +139,24 @@ const audio=new Audio(file)
 audioTracks.push(audio)
 
 const div=document.createElement("div")
-div.className="track"
+div.className="channel"
 
 div.innerHTML=`
 
-<span style="width:120px">${name}</span>
+<div>${name}</div>
 
-<button id="solo${i}">Solo</button>
 <button id="mute${i}">Mute</button>
+<button id="solo${i}">Solo</button>
 
-<label>Vol</label>
 <input type="range" min="0" max="1" step="0.01" value="1"
-class="volume" id="vol${i}">
+class="fader" id="vol${i}">
 
 `
 
-mixer.appendChild(div)
+document.getElementById("mixer").appendChild(div)
 
-document.getElementById("solo"+i).onclick=()=>toggleSolo(i)
 document.getElementById("mute"+i).onclick=()=>toggleMute(i)
+document.getElementById("solo"+i).onclick=()=>toggleSolo(i)
 
 document.getElementById("vol"+i).oninput=(e)=>{
 
@@ -137,9 +171,7 @@ wavesurfer.on("seek",(progress)=>{
 const time=wavesurfer.getDuration()*progress
 
 audioTracks.forEach(a=>{
-
 a.currentTime=time
-
 })
 
 })
@@ -165,13 +197,12 @@ setActive("pauseBtn")
 function stopAll(){
 
 audioTracks.forEach(a=>{
-
 a.pause()
 a.currentTime=0
-
 })
 
 wavesurfer.stop()
+wavesurfer.seekTo(0)
 
 setActive("stopBtn")
 
@@ -187,29 +218,32 @@ if(soloIndex===i){
 
 audioTracks.forEach(a=>a.volume=1)
 
+document.querySelectorAll(".channel")
+.forEach(c=>c.classList.remove("active"))
+
 document.querySelectorAll("[id^='solo']")
 .forEach(b=>b.classList.remove("active"))
 
 soloIndex=null
 
-document.getElementById("waveform").classList.remove("highlight")
-
 }else{
 
 audioTracks.forEach((a,index)=>{
-
 a.volume=index===i?1:0
-
 })
+
+document.querySelectorAll(".channel")
+.forEach(c=>c.classList.remove("active"))
 
 document.querySelectorAll("[id^='solo']")
 .forEach(b=>b.classList.remove("active"))
 
 document.getElementById("solo"+i).classList.add("active")
 
-soloIndex=i
+document.getElementById("mixer").children[i]
+.classList.add("active")
 
-document.getElementById("waveform").classList.add("highlight")
+soloIndex=i
 
 }
 
@@ -236,7 +270,7 @@ btn.classList.remove("active")
 
 function setActive(id){
 
-document.querySelectorAll("#playBtn,#pauseBtn,#stopBtn")
+document.querySelectorAll("#transport button")
 .forEach(b=>b.classList.remove("active"))
 
 document.getElementById(id).classList.add("active")
