@@ -16,21 +16,28 @@ padding:40px;
 }
 
 .track{
-margin-bottom:35px;
-padding:10px;
-border-bottom:1px solid #ddd;
+margin-bottom:30px;
 }
 
 .wave{
 height:120px;
-margin-top:5px;
+margin-top:8px;
 }
 
 .controls{
 display:flex;
-align-items:center;
 gap:10px;
+align-items:center;
 margin-top:5px;
+}
+
+button{
+padding:5px 10px;
+}
+
+button.active{
+background:#222;
+color:white;
 }
 
 .volume{
@@ -38,7 +45,6 @@ width:150px;
 }
 
 </style>
-
 </head>
 
 <body>
@@ -55,19 +61,19 @@ width:150px;
 const tracks=[
 
 { name:"Drums", file:"drums.mp3", type:"instrument"},
-{ name:"Click", file:"click.mp3", type:"click"},
-{ name:"Cues", file:"cues.mp3", type:"click"},
+{ name:"Click", file:"Click.mp3", type:"click"},
+{ name:"Cues", file:"Cues.mp3", type:"click"},
 { name:"Guitar", file:"guitar.mp3", type:"instrument"},
-{ name:"AG2", file:"ag2.mp3", type:"instrument"}
+{ name:"AG2", file:"Ag2.mp3", type:"instrument"}
 
 ]
 
 let players=[]
-let soloIndex=null
+let soloTrack=null
 
 tracks.forEach((track,i)=>{
 
-const color=track.type==="click" ? "#ff5555" : "#4aa3ff"
+const color = track.type==="click" ? "#ff5555" : "#4aa3ff"
 
 const div=document.createElement("div")
 
@@ -94,7 +100,7 @@ class="volume" id="vol${i}">
 
 document.getElementById("tracks").appendChild(div)
 
-const ws=WaveSurfer.create({
+const ws = WaveSurfer.create({
 
 container:"#wave"+i,
 backend:"MediaElement",
@@ -108,7 +114,9 @@ ws.load(track.file)
 
 players.push(ws)
 
-document.getElementById("solo"+i).onclick=()=>toggleSolo(i)
+document.getElementById("vol"+i).oninput=(e)=>{
+ws.setVolume(e.target.value)
+}
 
 document.getElementById("mute"+i).onclick=()=>{
 
@@ -120,42 +128,40 @@ ws.setVolume(1)
 
 }
 
-document.getElementById("vol"+i).oninput=(e)=>{
-
-ws.setVolume(e.target.value)
-
-}
+document.getElementById("solo"+i).onclick=()=>toggleSolo(i)
 
 })
 
 function playAll(){
-
 players.forEach(p=>p.play())
-
 }
 
 function pauseAll(){
-
 players.forEach(p=>p.pause())
-
 }
 
 function toggleSolo(i){
 
-if(soloIndex===i){
+const button=document.getElementById("solo"+i)
+
+if(soloTrack===i){
 
 players.forEach(p=>p.setVolume(1))
-soloIndex=null
+button.classList.remove("active")
+soloTrack=null
 
 }else{
 
 players.forEach((p,index)=>{
-
 p.setVolume(index===i?1:0)
-
 })
 
-soloIndex=i
+document.querySelectorAll("button[id^='solo']")
+.forEach(b=>b.classList.remove("active"))
+
+button.classList.add("active")
+
+soloTrack=i
 
 }
 
