@@ -15,31 +15,6 @@ color:white;
 text-align:center;
 }
 
-.topbar{
-display:flex;
-justify-content:center;
-align-items:center;
-gap:40px;
-margin-top:20px;
-}
-
-.transport button{
-padding:10px 16px;
-margin:4px;
-border:none;
-border-radius:6px;
-font-size:14px;
-cursor:pointer;
-}
-
-#play{background:#2ecc71}
-#pause{background:#f1c40f}
-#stop{background:#e74c3c}
-
-.master{
-width:200px;
-}
-
 #waveform{
 width:90%;
 height:140px;
@@ -52,25 +27,26 @@ border-radius:6px;
 width:90%;
 margin:auto;
 display:grid;
-grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
 gap:10px;
 }
 
 .track{
-background:#3f6db5;
-border-radius:6px;
 padding:6px;
+border-radius:6px;
+border:2px solid #2b6cff;
+background:transparent;
 display:flex;
 flex-direction:column;
 align-items:center;
 }
 
 .track.click{
-background:#a52a2a;
+border-color:red;
 }
 
 .track.solo{
-outline:3px solid orange;
+border-color:orange;
 }
 
 .track-name{
@@ -108,19 +84,15 @@ cursor:pointer;
 
 <h1>Multitrack Check</h1>
 
-<div class="topbar">
-
 <div class="transport">
 <button id="play">Play</button>
 <button id="pause">Pause</button>
 <button id="stop">Stop</button>
 </div>
 
-<div class="master">
+<div>
 Master Volume
 <input id="masterVolume" type="range" min="0" max="1" step="0.01" value="1">
-</div>
-
 </div>
 
 <div id="waveform"></div>
@@ -134,9 +106,9 @@ const masterGain = ctx.createGain()
 masterGain.connect(ctx.destination)
 
 let buffers=[]
-let sources=[]
 let gains=[]
 let states=[]
+let sources=[]
 
 let startTime=0
 let pauseOffset=0
@@ -152,9 +124,18 @@ height:120
 
 fetch("tracks.json")
 .then(r=>r.json())
-.then(loadTracks)
+.then(init)
 
-async function loadTracks(list){
+async function init(list){
+
+// sortare corecta
+let click=list.filter(f=>f.toLowerCase().includes("click"))
+let cues=list.filter(f=>f.toLowerCase().includes("cues"))
+let rest=list.filter(f=>!f.toLowerCase().includes("click") && !f.toLowerCase().includes("cues"))
+
+rest.sort()
+
+list=[...click,...cues,...rest]
 
 const container=document.getElementById("tracks")
 
@@ -163,25 +144,7 @@ for(let i=0;i<list.length;i++){
 let file=list[i]
 let name=file.replace(".mp3","")
 
-let res=await fetch("audio/"+file)
-let arr=await res.arrayBuffer()
-let buf=await ctx.decodeAudioData(arr)
-
-buffers.push(buf)
-
-let gain=ctx.createGain()
-gain.connect(masterGain)
-
-gains.push(gain)
-
-states.push({
-volume:1,
-mute:false,
-solo:false
-})
-
-if(i==0) wavesurfer.load("audio/"+file)
-
+// UI
 let div=document.createElement("div")
 div.className="track"
 
@@ -199,6 +162,27 @@ div.innerHTML=`
 `
 
 container.appendChild(div)
+
+// audio
+let res=await fetch("audio/"+file)
+let arr=await res.arrayBuffer()
+let buf=await ctx.decodeAudioData(arr)
+
+buffers.push(buf)
+
+let gain=ctx.createGain()
+gain.connect(masterGain)
+
+gains.push(gain)
+
+states.push({
+volume:1,
+mute:false,
+solo:false
+})
+
+// waveform
+if(i==0) wavesurfer.load("audio/"+file)
 
 let fader=div.querySelector(".fader")
 let mute=div.querySelector(".mute")
@@ -235,7 +219,6 @@ for(let i=0;i<buffers.length;i++){
 let src=ctx.createBufferSource()
 src.buffer=buffers[i]
 src.connect(gains[i])
-
 src.start(0,offset)
 
 sources.push(src)
@@ -287,7 +270,6 @@ states.forEach((s,i)=>{
 let vol=s.volume
 
 if(s.mute) vol=0
-
 if(soloActive && !s.solo) vol=0
 
 gains[i].gain.value=vol
@@ -295,6 +277,22 @@ gains[i].gain.value=vol
 })
 
 }
+
+// waveform click sync
+wavesurfer.on("seek",p=>{
+
+let dur=buffers[0].duration
+pauseOffset=dur*p
+
+if(playing){
+
+sources.forEach(s=>s.stop())
+startSources(pauseOffset)
+startTime=ctx.currentTime-pauseOffset
+
+}
+
+})
 
 document.getElementById("play").onclick=play
 document.getElementById("pause").onclick=pause
