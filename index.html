@@ -3,119 +3,112 @@
 <head>
 <meta charset="UTF-8">
 <title>Multitrack Check</title>
+
 <script src="https://unpkg.com/wavesurfer.js"></script>
+
 <style>
+
 body{
 font-family:Arial;
-background:#2f2f2f;
+background:#353535;
 color:white;
 text-align:center;
 }
 
-h1{
+.topbar{
+display:flex;
+justify-content:center;
+align-items:center;
+gap:40px;
 margin-top:20px;
 }
 
-.transport{
-margin:20px;
-}
-
-button{
-padding:10px 15px;
-margin:5px;
+.transport button{
+padding:10px 16px;
+margin:4px;
 border:none;
 border-radius:6px;
-cursor:pointer;
 font-size:14px;
+cursor:pointer;
 }
 
-#play{background:#27ae60}
+#play{background:#2ecc71}
 #pause{background:#f1c40f}
 #stop{background:#e74c3c}
 
+.master{
+width:200px;
+}
+
 #waveform{
 width:90%;
-height:150px;
-margin:auto;
+height:140px;
+margin:25px auto;
 background:#444;
 border-radius:6px;
-}
-
-.master{
-width:300px;
-margin:auto;
-margin-top:10px;
-}
-
-.master input{
-width:100%;
 }
 
 .tracks{
 width:90%;
 margin:auto;
-margin-top:20px;
-display:flex;
-flex-wrap:wrap;
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
 gap:10px;
-justify-content:center;
 }
 
 .track{
-background:#444;
-padding:8px;
+background:#3f6db5;
 border-radius:6px;
-width:120px;
+padding:6px;
+display:flex;
+flex-direction:column;
+align-items:center;
 }
 
 .track.click{
-border:2px solid red;
+background:#a52a2a;
 }
 
 .track.solo{
-border:2px solid orange;
+outline:3px solid orange;
 }
 
 .track-name{
-font-size:12px;
+font-size:11px;
+margin-bottom:5px;
+}
+
+.fader{
+writing-mode:bt-lr;
+-webkit-appearance: slider-vertical;
+height:90px;
 margin-bottom:6px;
 }
 
 .controls{
 display:flex;
-justify-content:center;
-gap:4px;
-margin-top:5px;
+gap:6px;
 }
 
 .controls button{
-font-size:11px;
+font-size:10px;
 padding:3px 6px;
-}
-
-.fader{
-width:100%;
-margin-top:8px;
-}
-
-.fader::-webkit-slider-thumb{
-height:14px;
-width:14px;
-background:#fff;
+border:none;
+border-radius:4px;
 cursor:pointer;
-border-radius:50%;
 }
 
-.fader::-webkit-slider-runnable-track{
-height:6px;
-background:#777;
-border-radius:3px;
-}
+.mute.active{background:red}
+.solo.active{background:orange}
+
 </style>
 </head>
 
 <body>
+
 <h1>Multitrack Check</h1>
+
+<div class="topbar">
 
 <div class="transport">
 <button id="play">Play</button>
@@ -128,130 +121,210 @@ Master Volume
 <input id="masterVolume" type="range" min="0" max="1" step="0.01" value="1">
 </div>
 
+</div>
+
 <div id="waveform"></div>
 
 <div class="tracks" id="tracks"></div>
 
 <script>
-let wavesurfer = WaveSurfer.create({
+
+const ctx = new AudioContext()
+const masterGain = ctx.createGain()
+masterGain.connect(ctx.destination)
+
+let buffers=[]
+let sources=[]
+let gains=[]
+let states=[]
+
+let startTime=0
+let pauseOffset=0
+let playing=false
+
+const wavesurfer = WaveSurfer.create({
 container:"#waveform",
-waveColor:"#999",
+waveColor:"#888",
 progressColor:"#fff",
 cursorColor:"#fff",
 height:120
-});
+})
 
-let tracks=[];
-let audios=[];
-
-// Încarcă lista track-uri
 fetch("tracks.json")
 .then(r=>r.json())
-.then(list=>{
-    init(list);
+.then(loadTracks)
+
+async function loadTracks(list){
+
+const container=document.getElementById("tracks")
+
+for(let i=0;i<list.length;i++){
+
+let file=list[i]
+let name=file.replace(".mp3","")
+
+let res=await fetch("audio/"+file)
+let arr=await res.arrayBuffer()
+let buf=await ctx.decodeAudioData(arr)
+
+buffers.push(buf)
+
+let gain=ctx.createGain()
+gain.connect(masterGain)
+
+gains.push(gain)
+
+states.push({
+volume:1,
+mute:false,
+solo:false
 })
-.catch(e=>console.error("tracks.json nu se poate încărca:", e));
 
-function init(list){
-    const container=document.getElementById("tracks");
+if(i==0) wavesurfer.load("audio/"+file)
 
-    list.forEach((file,i)=>{
-        let name=file.replace(".mp3","");
-        let audio=new Audio("audio/"+file);
+let div=document.createElement("div")
+div.className="track"
 
-        if(i==0) wavesurfer.load("audio/"+file); // waveform pe primul track
-
-        let div=document.createElement("div");
-        div.className="track";
-
-        if(name.toLowerCase().includes("click")||name.toLowerCase().includes("cues")){
-            div.classList.add("click");
-        }
-
-        div.innerHTML=`
-        <div class="track-name">${name}</div>
-        <div class="controls">
-        <button class="mute">Mute</button>
-        <button class="solo">Solo</button>
-        </div>
-        <input class="fader" type="range" min="0" max="1" step="0.01" value="1">
-        `;
-
-        container.appendChild(div);
-
-        let muteBtn=div.querySelector(".mute");
-        let soloBtn=div.querySelector(".solo");
-        let fader=div.querySelector(".fader");
-
-        // Mute
-        muteBtn.onclick=()=>{
-            audio.muted=!audio.muted;
-            muteBtn.style.background=audio.muted?"red":"";
-        }
-
-        // Solo
-        soloBtn.onclick=()=>{
-            soloBtn.classList.toggle("active");
-            div.classList.toggle("solo");
-            updateSolo();
-        }
-
-        fader.oninput=()=>{ audio.volume=fader.value; }
-
-        tracks.push({audio,soloBtn});
-        audios.push(audio);
-    });
+if(name.toLowerCase().includes("click")||name.toLowerCase().includes("cues")){
+div.classList.add("click")
 }
 
-function updateSolo(){
-    let solos=tracks.filter(t=>t.soloBtn.classList.contains("active"));
-    if(solos.length==0){
-        tracks.forEach(t=>t.audio.muted=false);
-    }else{
-        tracks.forEach(t=>{
-            t.audio.muted=!t.soloBtn.classList.contains("active");
-        });
-    }
+div.innerHTML=`
+<div class="track-name">${name}</div>
+<input class="fader" type="range" min="0" max="1" step="0.01" value="1">
+<div class="controls">
+<button class="mute">M</button>
+<button class="solo">S</button>
+</div>
+`
+
+container.appendChild(div)
+
+let fader=div.querySelector(".fader")
+let mute=div.querySelector(".mute")
+let solo=div.querySelector(".solo")
+
+fader.oninput=e=>{
+states[i].volume=e.target.value
+updateMix()
 }
 
-function playAll(){
-    let time=wavesurfer.getCurrentTime();
-    audios.forEach(a=>{a.currentTime=time; a.play();});
-    wavesurfer.play();
+mute.onclick=()=>{
+states[i].mute=!states[i].mute
+mute.classList.toggle("active")
+updateMix()
 }
 
-function pauseAll(){
-    audios.forEach(a=>a.pause());
-    wavesurfer.pause();
+solo.onclick=()=>{
+states[i].solo=!states[i].solo
+solo.classList.toggle("active")
+div.classList.toggle("solo")
+updateMix()
 }
 
-function stopAll(){
-    audios.forEach(a=>{a.pause(); a.currentTime=0;});
-    wavesurfer.stop();
 }
 
-document.getElementById("play").onclick=playAll;
-document.getElementById("pause").onclick=pauseAll;
-document.getElementById("stop").onclick=stopAll;
+}
 
-// Master volume
+function startSources(offset){
+
+sources=[]
+
+for(let i=0;i<buffers.length;i++){
+
+let src=ctx.createBufferSource()
+src.buffer=buffers[i]
+src.connect(gains[i])
+
+src.start(0,offset)
+
+sources.push(src)
+
+}
+
+}
+
+function play(){
+
+if(playing) return
+
+startSources(pauseOffset)
+
+startTime=ctx.currentTime-pauseOffset
+wavesurfer.play(pauseOffset)
+
+playing=true
+}
+
+function pause(){
+
+if(!playing) return
+
+sources.forEach(s=>s.stop())
+
+pauseOffset=ctx.currentTime-startTime
+wavesurfer.pause()
+
+playing=false
+}
+
+function stop(){
+
+sources.forEach(s=>s.stop())
+
+pauseOffset=0
+wavesurfer.stop()
+
+playing=false
+}
+
+function updateMix(){
+
+let soloActive=states.some(s=>s.solo)
+
+states.forEach((s,i)=>{
+
+let vol=s.volume
+
+if(s.mute) vol=0
+
+if(soloActive && !s.solo) vol=0
+
+gains[i].gain.value=vol
+
+})
+
+}
+
+document.getElementById("play").onclick=play
+document.getElementById("pause").onclick=pause
+document.getElementById("stop").onclick=stop
+
 document.getElementById("masterVolume").oninput=e=>{
-    audios.forEach(a=>a.volume=e.target.value);
+masterGain.gain.value=e.target.value
 }
 
-// Tastatura
 document.addEventListener("keydown",e=>{
-    if(e.code==="Space"){
-        e.preventDefault();
-        if(wavesurfer.isPlaying()) pauseAll();
-        else playAll();
-    }
-    if(e.code==="Enter"){
-        if(wavesurfer.isPlaying()){
-            stopAll(); playAll();
-        }else stopAll();
-    }
-});
+
+if(e.code==="Space"){
+e.preventDefault()
+playing?pause():play()
+}
+
+if(e.code==="Enter"){
+
+if(playing){
+stop()
+play()
+}else{
+stop()
+}
+
+}
+
+})
+
 </script>
+
 </body>
 </html>
